@@ -1,0 +1,372 @@
+## Introduction  
+This document describes how to produce a set of graphics and perform the associated statistical tests that describe trends in temperature at two shallow lakes. 
+We are interested in depicting (graphically and statistically) how surface temperatures vary at two distinct shallow lakes. Lakes are located within the same watershed and equipped with the same type of HOBO datalogger ($Onset^{TM}$) tethered to a tree in the littoral zone of the shallow lake (distance to shore < 0.5 meter), and let floating at the surface. Dataloggers thus measure temperature at the interface between the water column and the air compartment. The two dataloggers (named Arj.20125800.S and Arj.20125804.N) record continuous data with a timelag of 30 minutes each. Given that local conditions (vegetation, shade ...) and microclimate may differ between the two shallow lakes, we aim at describing the trends and also assessing whether the two timeseries differ or not.    
+
+## Master dataset  
+Original data are saved in the file : master-Odo-Arj-HOBO-06III-07VII2022-CORR.csv (this dataset has been checked for errors and inconsistencies).  
+Alternatively you may use the RData file Arj.2022  
+Reminder: RData can be saved using save(Arj.2022, file ="C:/Users/damico/Documents/Odo Arj III 2022 Prigent/Arj.2022.RData")  
+
+File contains different columns with dates (time) in different formats and also temperature data for the two dataloggers: Arj.20125800.S and Arj.20125804.N   
+
+Loading the data and checking the structure gives: 
+
+```{r }
+load("C:/Users/damico/Documents/Odo Arj III 2022 Prigent/Arj.2022.RData")
+#Arj.2022 <- read.csv(file.choose(), header =T,sep=";") # ## master-Odo-Arj-HOBO-06III-07VII2022-CORR.csv
+str(Arj.2022)
+```
+
+It consists in a data.frame made of 5362 obs. of  5 variables:  
+ $ Date.N        : chr  "03/16/22 06:00:00 PM" "03/16/22 06:30:00 PM" "03/16/22 07:00:00 PM" "03/16/22 07:30:00 PM" ...  
+ $ Arj.20125804.N: num  13.8 13.6 13.5 13.5 13.4 ...  
+ $ Date.S        : chr  "03/16/22 06:00:00 PM" "03/16/22 06:30:00 PM" "03/16/22 07:00:00 PM" "03/16/22 07:30:00 PM" ...  
+ $ Arj.20125800.S: num  13.9 13.8 13.8 13.7 13.7 ...  
+ $ RDate.Arj.2022: POSIXct, format: "2022-03-16 18:00:00" "2022-03-16 18:30:00" "2022-03-16 19:00:00" "2022-03-16 19:30:00" ...  
+ 
+RDate.Arj.2022 is in POSIXct, format: "2022-03-16 18:00:00"  
+
+Original dates (in chr format) have been transformed using the command strptime.  
+Important notice: be strict with order and upper and lower case (e.g.  "%m/%d/%y %I:%M:%S %p) and recall that if the year is expressed with two numbers (e.g. 20 standing for 2020) then use %y in lower case! Alternatively, when the year is expressed with four numbers (e.g. 2020) then use %Y!  
+
+## Summary statistics     
+
+```{r}
+summary(Arj.2022)
+```
+Looks like the timeseries are rather similar w/r to median, despite extrema differ.  
+
+Deviation between two series is calculated easily with the code below. Alternatively, use the function mutate in dplyr package [e.g. Arj.2022 %>% dplyr::mutate(ecart.Sud.Nord = Arj.20125800.S-Arj.20125804.N)].  
+Check and summarize.  
+
+```{r}
+#Arj.2022 %>% dplyr::mutate(ecart.Sud.Nord = Arj.20125800.S-Arj.20125804.N)
+ecart.Sud.Nord <- (Arj.2022$Arj.20125800.S - Arj.2022$Arj.20125804.N)
+head(ecart.Sud.Nord )
+#ecart.JT.Arj.S.N <- (JT.Arj.20125800.S[,2] - JT.Arj.20125804.N[,2])
+summary(ecart.Sud.Nord)
+```
+
+## Basic graphics  
+
+```{r }
+plot(Arj.2022$RDate.Arj.2022,Arj.2022$Arj.20125800.S,col="red",
+     pch=46,xlab="Date",ylab="Temperature (°C)",
+     ylim=c(0,40), main =" Arjuzanx 2022 : subsurface temperature")
+points(Arj.2022$RDate.Arj.2022,Arj.2022$Arj.20125804.N,col="blue",pch=46)
+legend(x="topleft",legend=c("Arj.20125800.S","Arj.20125804.N"),lty=c(1,1),cex=1.2, col=c("red","blue"), text.col=c("red","blue"), bty="n")
+```
+
+Changing default settings to show the 1st of the month in an appropriate way can be made using:    
+
+```{r }
+plot(Arj.2022$Arj.20125800.S, xaxt="n", col="red",
+     pch=46,xlab="Date",ylab="Temperature (°C)",
+     ylim=c(0,40), main =" Arjuzanx 2022 : subsurface temperature")
+points(Arj.2022$Arj.20125804.N,col="blue",pch=46)
+seqMois=c(1,   #  start = 16/03  i.e. 16th of March 2022
+          733, # 01 april  / 1440 lines for 30 days vs 1488 lines for 31 days w/ time step 30 minutes
+          2174, # 01 may
+          3662, # 01 june
+          5102, # 01 july
+          6590, # 01 august
+          8078, # 01 september
+          9518, # 01 october
+          11006, # 01 november
+          12446) #  01 december
+axis(side=1, at=seqMois, labels=F) 
+month <- c("","A","M","J","J","A","S","O","N","D") # March is muted as 1st of March doesn't appear  
+text(x=seqMois, par("usr")[3], labels = month, srt = 0,
+     pos = 1, xpd = TRUE, cex=1, offset = 1.5)
+legend(x="topleft",legend=c("Arj.20125800.S","Arj.20125804.N"),lty=c(1,1),cex=1, col=c("red","blue"), text.col=c("red","blue"), bty="n")
+```
+
+Plotting deviation gives:    
+
+```{r }
+plot(ecart.Sud.Nord, xaxt="n", col="brown",
+    pch=19,xlab="Date",ylab="Temperature (°C)",
+     ylim=c(-10,10), main =" Arjuzanx 2022 : S vs N deviation")
+seqMois=c(1,   #  start = 16/03  i.e. 16th of March 2022
+          733, # 01 april  / 1440 lines for 30 days vs 1488 lines for 31 days w/ time step 30 minutes
+          2174, # 01 may
+          3662, # 01 june
+          5102, # 01 july
+          6590, # 01 august
+          8078, # 01 september
+          9518, # 01 october
+          11006, # 01 november
+          12446) #  01 december
+axis(side=1, at=seqMois, labels=F) 
+month <- c("","A","M","J","J","A","S","O","N","D") # March is muted as 1st of March doesn't appear  
+text(x=seqMois, par("usr")[3], labels = month, srt = 0,
+     pos = 1, xpd = TRUE, cex=1, offset = 1.5)
+legend(x="top",legend="Arj.20125800.S - Arj.20125804.N", lty= 1,cex=1.2, pt.cex = 4, bty="n", col="brown", text.col= "brown")
+abline(h=0, col= "black", lty = 2)
+```
+
+Interpretation:  
+There is an obvious trend for values of the datalogger 'Arj.20125800.S' being higher than those of 'Arj.20125804.N', as we'll see below with a simple statistical approach.   
+
+
+## Aggregating data to get monthly and daily information    
+
+### Monthly mean    
+
+Using strftime function first is convenient.  
+
+```{r }
+RDate.Arj.2022.M <- strftime(Arj.2022$RDate.Arj.2022, format = "%Y/%m")
+tail(RDate.Arj.2022.M)
+M.Arj.2022 <- data.frame(
+  MT.Arj.20125800.S = Arj.2022$Arj.20125800.S,
+  MT.Arj.20125804.N = Arj.2022$Arj.20125804.N,
+                        date=RDate.Arj.2022.M)
+str(M.Arj.2022)
+```
+
+The calculation of monthly averages is done with the aggregate command, specifying 'mean' as argument.  
+
+```{r }
+MeanT.Arj.20125800.S <- aggregate(MT.Arj.20125800.S ~ RDate.Arj.2022.M, data=M.Arj.2022, mean)
+MeanT.Arj.20125800.S
+MeanT.Arj.20125804.N <- aggregate(MT.Arj.20125804.N ~ RDate.Arj.2022.M, data=M.Arj.2022, mean)
+MeanT.Arj.20125804.N
+``` 
+
+  
+Interpretation:  
+Monthly means at Arj.20125804.N have increased from 13.35 °C to 23.18 °C from March to July.  
+
+
+### Daily averages       
+
+Again, using strftime function first is convenient. Now, the format is "%Y/%m/%d".      
+
+```{r }
+RDate.Arj.2022.J <- strftime(Arj.2022$RDate.Arj.2022, format = "%Y/%m/%d")
+tail(RDate.Arj.2022.J)
+J.Arj.2022 <- data.frame(
+  JT.Arj.20125800.S = Arj.2022$Arj.20125800.S,
+  JT.Arj.20125804.N = Arj.2022$Arj.20125804.N,
+                        date=RDate.Arj.2022.J)
+str(J.Arj.2022)
+``` 
+
+The calculation of monthly averages is done with the aggregate command again.  
+
+```{r}
+JT.Arj.20125800.S <- aggregate(JT.Arj.20125800.S ~ date, data= J.Arj.2022, mean)
+JT.Arj.20125804.N <- aggregate(JT.Arj.20125804.N ~ date, data= J.Arj.2022, mean)
+str(JT.Arj.20125800.S)
+str(JT.Arj.20125804.N)
+```  
+
+Plotting the daily mean gives:  
+    
+```{r }
+plot(JT.Arj.20125800.S[,2],  xaxt="n", col="red",
+    pch=19,xlab="Date",ylab="Temperature (°C)",
+     ylim=c(0,40), main =" Arjuzanx 2022 : daily mean")
+seqJours=c(1,
+          17,
+          47,
+          78,
+          108) # one pt for each first day of the month: cad 111 is the 1st day of September here 
+axis(side=1, at=seqJours, labels=F) 
+month <- c("","A","M","J","J")
+text(x=seqJours, par("usr")[3], labels = month, srt = 0,
+     pos = 1, xpd = TRUE, cex=1, offset = 1.5)
+points(JT.Arj.20125804.N[,2], xaxt="n",col="blue")
+legend(x="topleft",legend=c("Arj.20125800.S","Arj.20125804.N"),lty=c("dotted","dotted"),cex=1, pt.cex = 4, col=c("red","blue"), text.col=c("red","blue"), bty="n")
+```  
+
+Interpretation:  
+A cold snap occured on early April this year 2022, whilst a record heatwave hit around 18th of June 2022 (and later on 18th of July 2022).   
+
+The summary statistics are as follows:  
+
+```{r}
+summary(JT.Arj.20125800.S)
+summary(JT.Arj.20125804.N)
+```
+
+
+
+### (Daily) variances:  
+
+Using the same logic we code:  
+
+```{r}
+var.JT.Arj.20125800.S <- aggregate(JT.Arj.20125800.S ~ date, data= J.Arj.2022, var)
+var.JT.Arj.20125804.N <- aggregate(JT.Arj.20125804.N ~ date, data= J.Arj.2022, var)
+str(var.JT.Arj.20125800.S)
+str(var.JT.Arj.20125804.N)
+```  
+
+And plot the (daily) variance against time as follows :    
+   
+```{r }
+plot(var.JT.Arj.20125800.S[,2],  xaxt="n", col="red",
+    pch=19,xlab="Date",ylab="Variance [Temperature]",
+     ylim=c(0,40), main =" Arjuzanx 2022 : daily variance")
+seqJours=c(1,
+          17,
+          47,
+          78,
+          108) # one pt for each first day of the month: cad 111 is the 1st day of September here 
+axis(side=1, at=seqJours, labels=F) 
+month <- c("","A","M","J","J")
+text(x=seqJours, par("usr")[3], labels = month, srt = 0,
+     pos = 1, xpd = TRUE, cex=1, offset = 1.5)
+points(var.JT.Arj.20125804.N[,2], xaxt="n",col="blue")
+legend(x="topleft",legend=c("var Arj.20125800.S","var Arj.20125804.N"),lty=c("dotted","dotted"),cex=1, pt.cex = 4, col=c("red","blue"), text.col=c("red","blue"), bty="n")
+``` 
+
+ 
+  
+### (Daily) standard-deviation:    
+
+```{r}
+se.JT.Arj.20125800.S <- sqrt(var.JT.Arj.20125800.S[,2])
+se.JT.Arj.20125804.N <- sqrt(var.JT.Arj.20125804.N[,2])
+str(se.JT.Arj.20125800.S)
+str(se.JT.Arj.20125804.N)
+```  
+
+Plot  
+   
+```{r }
+plot(se.JT.Arj.20125800.S,  xaxt="n", col="red",
+    pch=19,xlab="Date",ylab="SD [Temperature] (°C)",
+     ylim=c(0,10), main =" Arjuzanx 2022 : daily standard-deviation")
+
+seqJours=c(1,
+          17,
+          47,
+          78,
+          108) # one pt for each first day of the month: cad 111 is the 1st day of September here 
+axis(side=1, at=seqJours, labels=F) 
+month <- c("","A","M","J","J")
+text(x=seqJours, par("usr")[3], labels = month, srt = 0,
+     pos = 1, xpd = TRUE, cex=1, offset = 1.5)
+points(se.JT.Arj.20125804.N, xaxt="n",col="blue")
+legend(x="topleft",legend=c("S.E. Arj.20125800.S","S.E. Arj.20125804.N"),lty=c("dotted","dotted"),cex=1, pt.cex = 4, col=c("red","blue"), text.col=c("red","blue"), bty="n")
+```  
+
+
+  
+### (Daily) deviations between the two timeseries    
+
+```{r}
+ecart.JT.Arj.S.N <- (JT.Arj.20125800.S[,2] - JT.Arj.20125804.N[,2])
+summary(ecart.JT.Arj.S.N)
+```  
+
+Plot  
+```{r }
+plot(ecart.JT.Arj.S.N,  xaxt="n", col="brown",
+    pch=19,xlab="Date",ylab="Deviation in Temperature (°C)",
+     ylim=c(-5,5), main =" Arjuzanx 2022 : daily deviation")
+seqJours=c(1,
+          17,
+          47,
+          78,
+          108) # one pt for each first day of the month: cad 111 is the 1st day of September here 
+axis(side=1, at=seqJours, labels=F) 
+month <- c("","A","M","J","J")
+text(x=seqJours, par("usr")[3], labels = month, srt = 0,
+     pos = 1, xpd = TRUE, cex=1, offset = 1.5)
+legend(x="topright",legend="Arj.20125800.S - Arj.20125804.N", lty= 1,cex=1.2, pt.cex = 4, bty="n", col="brown", text.col= "brown")
+abline(h=0, col= "black", lty = 2)
+```
+ 
+Interpretation:  
+There is an obvious trend for values of the datalogger 'Arj.20125800.S' being higher than those of 'Arj.20125804.N', as we'll confirm below with a simple statistical approach.   
+
+
+###  5-day moving averages   
+
+A simple function is as below. Alternatively, calculation could also be done without the time intelligence functions. Of course, the moving average model is a rather naive approach to time series modelling, as it simply states that the next observation is the mean of all past observations. Although simple, this model is often surprisingly good and it represents a good starting point.  Advanced approaches may use exponential smoothing (similar logic to moving average, but this time, a different decreasing weight is assigned to each observations. In other words, less importance is given to observations as we move further from the present) or seasonal autoregressive integraded moving average model (SARIMA which can be seen as the combination of simpler models to make a complex model that can model time series exhibiting non-stationary properties and seasonality).  
+    
+```{r }
+ma5 <- function (x) {
+        y <- numeric(length(x)-2)
+        for (i in 4:(length(x)-1)) {
+                y[i] <- (x[i-3]+x[i-2]+x[i-1]+x[i]+x[i+1])/5
+        }
+        y }
+```
+
+Apply to the daily timeseries:  
+
+```{r }
+ma5T.JT.Arj.20125800.S <- ma5(JT.Arj.20125800.S[,2])
+ma5T.JT.Arj.20125804.N <- ma5(JT.Arj.20125804.N[,2])
+```
+    
+Plotting gives:  
+Notice that the piece of code "[! ma5T.JT.Arj.20125800.S %in% 0]" is used to remove the first zero values.  
+
+```{r }
+plot(ma5T.JT.Arj.20125800.S[! ma5T.JT.Arj.20125800.S %in% 0], type="l", xaxt="n", col="red",
+    pch=46,xlab="Date",ylab="Temperature (°C)",
+     ylim=c(0,40), main =" Arjuzanx 2022 : 5 day moving averages")
+seqJours=c(1,
+          17,
+          47,
+          78,
+          108) 
+axis(side=1, at=seqJours, labels=F) 
+month <- c("","A","M","J","J")
+text(x=seqJours, par("usr")[3], labels = month, srt = 0,
+     pos = 1, xpd = TRUE, cex=1, offset = 1.5)
+lines(ma5T.JT.Arj.20125804.N[! ma5T.JT.Arj.20125804.N %in% 0], xaxt="n",col="blue")
+legend(x="topleft",legend=c("Arj.20125800.S","Arj.20125804.N"),lty=c(1,1),cex=1, col=c("red","blue"), text.col=c("red","blue"), bty="n")
+```  
+
+  
+Interpretation:  
+The cold snap occurring on early April this year 2022 is still obvious, along with the the record heatwave having hit around 18th of June 2022 (and later on 18th of July 2022 - not shown).  
+
+
+## Assessing the differences between the time series   
+
+There are obviously different statistical approaches and methods that can be used to assess the differences between the time series. Put like that, this is a fairly broad and vague question, and we could distinct questions such as: 1). Are the values the same? 2). Are the trends the same? etc... 
+
+Given the common frequency of measurement (i.e. the time between observations) and independence across observations, we simply use a two sample t-test, which allows for different standard deviations and sample sizes across the two sub samples.  Welch (or Satterthwaite) approximation to the degrees of freedom is used.  
+Check: https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/t.test  
+
+Unpaired t test gives:  
+
+```{r}
+t.test(Arj.2022$Arj.20125800.S, Arj.2022$Arj.20125804.N)
+```  
+
+Interpretation:  
+The $p$-value ($< 2.2^{-16}$) is lower than 0.05, then we can reject the hypothesis $H_0$ of equality of the averages. True difference in means is not equal to 0 then. In conclusion, the two series are statistically, as we suspected looking at the deviation (difference) between the two-series. The 95 percent confidence interval [ 0.745 - 1.154] being above 0 adds further consistency to our conclusion.   
+
+The same conclusion is drawn from monthly daily data.  
+
+```{r}
+t.test(JT.Arj.20125800.S[,2], JT.Arj.20125804.N[,2])
+```  
+
+
+### Going further...  
+
+[Other approaches]  
+i/ The grangertest() in the lmtest library which is used to see if one time series is useful in forecasting another. 
+
+ii/ The F test to compare two variances, which serves at testing whether two time series are the same (when autocorrelation is low). The principle is that if time series X1 (in our case Arj.20125800.S for example) is the similar to time series X2 (in our case Arj.20125804.N thus)  then the variance of X1 - X2 should be less than the variance of X1. You can test this using a one sided F test for variance. If the ratio var(X1-X2)/var(X2) is significantly less than one then X2 explains a significant proportion of the variance of X1.
+You also need to check that X1 - X2 is not significantly different to 0. This can be done with a one sample two sided t.test.
+
+
+```{r}
+var.test(Arj.2022$Arj.20125800.S - Arj.2022$Arj.20125804.N, Arj.2022$Arj.20125800.S, alternative = "less")
+```  
+
+
+Interpretation:  
+With a value of 0.114, the ratio $var(Arj.20125800.S - Arj.20125804.N)/var(Arj.20125804.N)$ is significantly less than one then we conclude that Arj.20125804.N explains a significant proportion of the variance of Arj.20125800.S.    
+
